@@ -25,6 +25,26 @@ fn handle_get(values: &HashMap<String, String>, command_params: &[&str]) {
     }
 }
 
+fn handle_del(values: &mut HashMap<String, String>, command_params: &[&str]) {
+    if command_params.len() == 1 {
+        values.remove(command_params[0]);
+    } else {
+        handle_error(1, command_params.len());
+    }
+}
+
+fn handle_exists(values: &HashMap<String, String>, command_params: &[&str]) {
+    if command_params.len() == 1 {
+        if values.contains_key(command_params[0]) {
+            println!("The key '{}' exists", command_params[0]);
+        } else {
+            println!("The key '{}' does not exist", command_params[0]);
+        }
+    } else {
+        handle_error(1, command_params.len());
+    }
+}
+
 fn main() -> io::Result<()> {
     let mut input = String::new();
     let mut values = HashMap::new();
@@ -43,6 +63,9 @@ fn main() -> io::Result<()> {
         match tokens.first() {
             Some(&"SET") => handle_set(&mut values, &tokens[1..]),
             Some(&"GET") => handle_get(&values, &tokens[1..]),
+            Some(&"DEL") => handle_del(&mut values, &tokens[1..]),
+            Some(&"EXISTS") => handle_exists(&values, &tokens[1..]),
+
             _ => (),
         }
         input.clear();
