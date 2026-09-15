@@ -2,46 +2,82 @@ use std::collections::HashMap;
 use std::io;
 use std::io::Write;
 
+enum Command<'a> {
+    SET { key: &'a str, value: &'a str },
+    GET { key: &'a str },
+    DEL { key: &'a str },
+    EXISTS { key: &'a str },
+}
+
+fn get_command<'a>(command: &Vec<&'a str>) -> Option<Command<'a>> {
+    match command.first() {
+        Some(&"SET") => {
+            if command.len() == 3 {
+                Some(Command::SET {
+                    key: command[1],
+                    value: command[2],
+                })
+            } else {
+                handle_error(2, command.len() - 1);
+                None
+            }
+        }
+        Some(&"GET") => {
+            if command.len() == 2 {
+                Some(Command::GET { key: command[1] })
+            } else {
+                handle_error(1, command.len() - 1);
+                None
+            }
+        }
+        Some(&"DEL") => {
+            if command.len() == 2 {
+                Some(Command::DEL { key: command[1] })
+            } else {
+                handle_error(1, command.len() - 1);
+                None
+            }
+        }
+        Some(&"EXISTS") => {
+            if command.len() == 2 {
+                Some(Command::EXISTS { key: command[1] })
+            } else {
+                handle_error(1, command.len() - 1);
+                None
+            }
+        }
+        _ => None,
+    }
+}
+
 fn handle_error(length: usize, right_length: usize) {
-    println!("Expected {} arguments, got {}", length, right_length);
-}
-
-fn handle_set(values: &mut HashMap<String, String>, command_params: &[&str]) {
-    if command_params.len() == 2 {
-        values.insert(command_params[0].to_string(), command_params[1].to_string());
+    if length == 1 {
+        println!("Expected {} argument, got {}", length, right_length);
     } else {
-        handle_error(2, command_params.len());
+        println!("Expected {} arguments, got {}", length, right_length);
     }
 }
 
-fn handle_get(values: &HashMap<String, String>, command_params: &[&str]) {
-    if command_params.len() == 1 {
-        match values.get(command_params[0]) {
-            Some(value) => println!("{}", value),
-            _ => (),
-        }
-    } else {
-        handle_error(1, command_params.len());
+fn handle_set(values: &mut HashMap<String, String>, key: &str, value: &str) {
+    values.insert(key.to_string(), value.to_string());
+}
+
+fn handle_get(values: &HashMap<String, String>, key: &str) {
+    match values.get(key) {
+        Some(value) => println!("{}", value),
+        _ => (),
     }
 }
 
-fn handle_del(values: &mut HashMap<String, String>, command_params: &[&str]) {
-    if command_params.len() == 1 {
-        values.remove(command_params[0]);
-    } else {
-        handle_error(1, command_params.len());
-    }
+fn handle_del(values: &mut HashMap<String, String>, key: &str) {
+    values.remove(key);
 }
 
-fn handle_exists(values: &HashMap<String, String>, command_params: &[&str]) {
-    if command_params.len() == 1 {
-        if values.contains_key(command_params[0]) {
-            println!("The key '{}' exists", command_params[0]);
-        } else {
-            println!("The key '{}' does not exist", command_params[0]);
-        }
+fn handle_exists(values: &HashMap<String, String>, key: &str) {
+    if values.contains_key(key) {
+        println!("The key '{}' exists", key);
     } else {
-        handle_error(1, command_params.len());
+        println!("The key '{}' does not exist", key);
     }
 }
 
@@ -60,14 +96,16 @@ fn main() -> io::Result<()> {
             break;
         }
         let tokens: Vec<&str> = res.split_whitespace().collect();
-        match tokens.first() {
-            Some(&"SET") => handle_set(&mut values, &tokens[1..]),
-            Some(&"GET") => handle_get(&values, &tokens[1..]),
-            Some(&"DEL") => handle_del(&mut values, &tokens[1..]),
-            Some(&"EXISTS") => handle_exists(&values, &tokens[1..]),
+
+        match get_command(&tokens) {
+            Some(Command::SET { key, value }) => handle_set(&mut values, key, value),
+            Some(Command::GET { key }) => handle_get(&values, key),
+            Some(Command::DEL { key }) => handle_del(&mut values, key),
+            Some(Command::EXISTS { key }) => handle_exists(&values, key),
 
             _ => (),
         }
+
         input.clear();
     }
     Ok(())
