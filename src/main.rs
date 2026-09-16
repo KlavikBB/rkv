@@ -50,6 +50,38 @@ fn get_command<'a>(command: &Vec<&'a str>) -> Option<Command<'a>> {
     }
 }
 
+struct Store {
+    hashmap: HashMap<String, String>,
+}
+
+impl Store {
+    pub fn new() -> Self {
+        Self {
+            hashmap: HashMap::new(),
+        }
+    }
+
+    pub fn set(&mut self, key: &str, value: &str) {
+        self.hashmap.insert(key.to_string(), value.to_string());
+    }
+    pub fn get(&self, key: &str) {
+        match self.hashmap.get(key) {
+            Some(value) => println!("{}", value),
+            _ => (),
+        }
+    }
+    pub fn del(&mut self, key: &str) {
+        self.hashmap.remove(key);
+    }
+    pub fn exists(&self, key: &str) {
+        if self.hashmap.contains_key(key) {
+            println!("The key '{}' exists", key);
+        } else {
+            println!("The key '{}' does not exist", key);
+        }
+    }
+}
+
 fn handle_error(length: usize, right_length: usize) {
     if length == 1 {
         println!("Expected {} argument, got {}", length, right_length);
@@ -58,32 +90,9 @@ fn handle_error(length: usize, right_length: usize) {
     }
 }
 
-fn handle_set(values: &mut HashMap<String, String>, key: &str, value: &str) {
-    values.insert(key.to_string(), value.to_string());
-}
-
-fn handle_get(values: &HashMap<String, String>, key: &str) {
-    match values.get(key) {
-        Some(value) => println!("{}", value),
-        _ => (),
-    }
-}
-
-fn handle_del(values: &mut HashMap<String, String>, key: &str) {
-    values.remove(key);
-}
-
-fn handle_exists(values: &HashMap<String, String>, key: &str) {
-    if values.contains_key(key) {
-        println!("The key '{}' exists", key);
-    } else {
-        println!("The key '{}' does not exist", key);
-    }
-}
-
 fn main() -> io::Result<()> {
     let mut input = String::new();
-    let mut values = HashMap::new();
+    let mut store = Store::new();
     let mut stdout = io::stdout();
 
     loop {
@@ -98,10 +107,10 @@ fn main() -> io::Result<()> {
         let tokens: Vec<&str> = res.split_whitespace().collect();
 
         match get_command(&tokens) {
-            Some(Command::SET { key, value }) => handle_set(&mut values, key, value),
-            Some(Command::GET { key }) => handle_get(&values, key),
-            Some(Command::DEL { key }) => handle_del(&mut values, key),
-            Some(Command::EXISTS { key }) => handle_exists(&values, key),
+            Some(Command::SET { key, value }) => store.set(key, value),
+            Some(Command::GET { key }) => store.get(key),
+            Some(Command::DEL { key }) => store.del(key),
+            Some(Command::EXISTS { key }) => store.exists(key),
 
             _ => (),
         }
