@@ -64,21 +64,14 @@ impl Store {
     pub fn set(&mut self, key: &str, value: &str) {
         self.hashmap.insert(key.to_string(), value.to_string());
     }
-    pub fn get(&self, key: &str) {
-        match self.hashmap.get(key) {
-            Some(value) => println!("{}", value),
-            _ => (),
-        }
+    pub fn get(&self, key: &str) -> Option<&str> {
+        self.hashmap.get(key).map(|s| s.as_str())
     }
-    pub fn del(&mut self, key: &str) {
-        self.hashmap.remove(key);
+    pub fn del(&mut self, key: &str) -> bool {
+        self.hashmap.remove(key).is_some()
     }
-    pub fn exists(&self, key: &str) {
-        if self.hashmap.contains_key(key) {
-            println!("The key '{}' exists", key);
-        } else {
-            println!("The key '{}' does not exist", key);
-        }
+    pub fn exists(&self, key: &str) -> bool {
+        self.hashmap.contains_key(key)
     }
 }
 
@@ -87,6 +80,27 @@ fn handle_error(length: usize, right_length: usize) {
         println!("Expected {} argument, got {}", length, right_length);
     } else {
         println!("Expected {} arguments, got {}", length, right_length);
+    }
+}
+
+fn handle_get(value: Option<&str>) {
+    match value {
+        Some(v) => println!("{}", v),
+        _ => (),
+    }
+}
+
+fn handle_del(deleted: bool, key: &str) {
+    match deleted {
+        true => println!("The key '{}' was deleted", key),
+        false => println!("The key '{}' was not found", key),
+    }
+}
+
+fn handle_exists(exists: bool, key: &str) {
+    match exists {
+        true => println!("The key '{}' exists", key),
+        false => println!("The key '{}' does not exist", key),
     }
 }
 
@@ -108,9 +122,9 @@ fn main() -> io::Result<()> {
 
         match get_command(&tokens) {
             Some(Command::SET { key, value }) => store.set(key, value),
-            Some(Command::GET { key }) => store.get(key),
-            Some(Command::DEL { key }) => store.del(key),
-            Some(Command::EXISTS { key }) => store.exists(key),
+            Some(Command::GET { key }) => handle_get(store.get(key)),
+            Some(Command::DEL { key }) => handle_del(store.del(key), key),
+            Some(Command::EXISTS { key }) => handle_exists(store.exists(key), key),
 
             _ => (),
         }
