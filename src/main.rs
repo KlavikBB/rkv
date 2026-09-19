@@ -15,7 +15,7 @@ enum Command<'a> {
     EXISTS { key: &'a str },
 }
 
-fn get_command<'a>(command: &Vec<&'a str>) -> Result<Command<'a>, ParseError<'a>> {
+fn get_command<'a>(command: &[&'a str]) -> Result<Command<'a>, ParseError<'a>> {
     match command.first() {
         Some(&"SET") => {
             if command.len() == 3 {
