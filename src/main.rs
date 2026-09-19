@@ -2,6 +2,12 @@ use std::collections::HashMap;
 use std::io;
 use std::io::Write;
 
+enum ParseError<'a> {
+    UnknownCommand { command: &'a str },
+    ArgumentCountMismatch { expected: usize, actual: usize },
+    EmptyCommand,
+}
+
 enum Command<'a> {
     SET { key: &'a str, value: &'a str },
     GET { key: &'a str },
@@ -9,44 +15,53 @@ enum Command<'a> {
     EXISTS { key: &'a str },
 }
 
-fn get_command<'a>(command: &Vec<&'a str>) -> Option<Command<'a>> {
+fn get_command<'a>(command: &Vec<&'a str>) -> Result<Command<'a>, ParseError<'a>> {
     match command.first() {
         Some(&"SET") => {
             if command.len() == 3 {
-                Some(Command::SET {
+                Ok(Command::SET {
                     key: command[1],
                     value: command[2],
                 })
             } else {
-                handle_error(2, command.len() - 1);
-                None
+                Err(ParseError::ArgumentCountMismatch {
+                    expected: 2,
+                    actual: command.len() - 1,
+                })
             }
         }
         Some(&"GET") => {
             if command.len() == 2 {
-                Some(Command::GET { key: command[1] })
+                Ok(Command::GET { key: command[1] })
             } else {
-                handle_error(1, command.len() - 1);
-                None
+                Err(ParseError::ArgumentCountMismatch {
+                    expected: 1,
+                    actual: command.len() - 1,
+                })
             }
         }
         Some(&"DEL") => {
             if command.len() == 2 {
-                Some(Command::DEL { key: command[1] })
+                Ok(Command::DEL { key: command[1] })
             } else {
-                handle_error(1, command.len() - 1);
-                None
+                Err(ParseError::ArgumentCountMismatch {
+                    expected: 1,
+                    actual: command.len() - 1,
+                })
             }
         }
         Some(&"EXISTS") => {
             if command.len() == 2 {
-                Some(Command::EXISTS { key: command[1] })
+                Ok(Command::EXISTS { key: command[1] })
             } else {
-                handle_error(1, command.len() - 1);
-                None
+                Err(ParseError::ArgumentCountMismatch {
+                    expected: 1,
+                    actual: command.len() - 1,
+                })
             }
         }
-        _ => None,
+        Some(&v) => Err(ParseError::UnknownCommand { command: v }),
+        None => Err(ParseError::EmptyCommand),
     }
 }
 
@@ -75,11 +90,15 @@ impl Store {
     }
 }
 
-fn handle_error(length: usize, right_length: usize) {
+fn handle_command_error(command: &str) {
+    println!("ERROR: Unknown command: '{}'", command);
+}
+
+fn handle_arg_error(length: usize, right_length: usize) {
     if length == 1 {
-        println!("Expected {} argument, got {}", length, right_length);
+        println!("ERROR: Expected {} argument, got {}", length, right_length);
     } else {
-        println!("Expected {} arguments, got {}", length, right_length);
+        println!("ERROR: Expected {} arguments, got {}", length, right_length);
     }
 }
 
@@ -121,12 +140,16 @@ fn main() -> io::Result<()> {
         let tokens: Vec<&str> = res.split_whitespace().collect();
 
         match get_command(&tokens) {
-            Some(Command::SET { key, value }) => store.set(key, value),
-            Some(Command::GET { key }) => handle_get(store.get(key)),
-            Some(Command::DEL { key }) => handle_del(store.del(key), key),
-            Some(Command::EXISTS { key }) => handle_exists(store.exists(key), key),
+            Ok(Command::SET { key, value }) => store.set(key, value),
+            Ok(Command::GET { key }) => handle_get(store.get(key)),
+            Ok(Command::DEL { key }) => handle_del(store.del(key), key),
+            Ok(Command::EXISTS { key }) => handle_exists(store.exists(key), key),
 
-            _ => (),
+            Err(ParseError::UnknownCommand { command }) => handle_command_error(command),
+            Err(ParseError::ArgumentCountMismatch { expected, actual }) => {
+                handle_arg_error(expected, actual)
+            }
+            Err(ParseError::EmptyCommand) => (),
         }
 
         input.clear();
