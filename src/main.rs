@@ -132,7 +132,15 @@ fn main() -> io::Result<()> {
         stdout.write_all(b"> ")?;
         stdout.flush()?;
 
-        io::stdin().read_line(&mut input)?;
+        match io::stdin().read_line(&mut input) {
+            Ok(n) => {
+                if n == 0 {
+                    println!();
+                    break;
+                }
+            }
+            Err(error) => Err(error)?,
+        }
         let res = input.trim();
         if res == "quit" {
             break;
