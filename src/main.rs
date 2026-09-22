@@ -1,94 +1,14 @@
-use std::collections::HashMap;
+mod command;
+mod parser;
+mod store;
+
+use crate::command::Command;
+use crate::parser::ParseError;
+use crate::parser::get_command;
+use crate::store::Store;
+
 use std::io;
 use std::io::Write;
-
-enum ParseError<'a> {
-    UnknownCommand { command: &'a str },
-    ArgumentCountMismatch { expected: usize, actual: usize },
-    EmptyCommand,
-}
-
-enum Command<'a> {
-    SET { key: &'a str, value: &'a str },
-    GET { key: &'a str },
-    DEL { key: &'a str },
-    EXISTS { key: &'a str },
-}
-
-fn get_command<'a>(command: &[&'a str]) -> Result<Command<'a>, ParseError<'a>> {
-    match command.first() {
-        Some(&"SET") => {
-            if command.len() == 3 {
-                Ok(Command::SET {
-                    key: command[1],
-                    value: command[2],
-                })
-            } else {
-                Err(ParseError::ArgumentCountMismatch {
-                    expected: 2,
-                    actual: command.len() - 1,
-                })
-            }
-        }
-        Some(&"GET") => {
-            if command.len() == 2 {
-                Ok(Command::GET { key: command[1] })
-            } else {
-                Err(ParseError::ArgumentCountMismatch {
-                    expected: 1,
-                    actual: command.len() - 1,
-                })
-            }
-        }
-        Some(&"DEL") => {
-            if command.len() == 2 {
-                Ok(Command::DEL { key: command[1] })
-            } else {
-                Err(ParseError::ArgumentCountMismatch {
-                    expected: 1,
-                    actual: command.len() - 1,
-                })
-            }
-        }
-        Some(&"EXISTS") => {
-            if command.len() == 2 {
-                Ok(Command::EXISTS { key: command[1] })
-            } else {
-                Err(ParseError::ArgumentCountMismatch {
-                    expected: 1,
-                    actual: command.len() - 1,
-                })
-            }
-        }
-        Some(&v) => Err(ParseError::UnknownCommand { command: v }),
-        None => Err(ParseError::EmptyCommand),
-    }
-}
-
-struct Store {
-    hashmap: HashMap<String, String>,
-}
-
-impl Store {
-    pub fn new() -> Self {
-        Self {
-            hashmap: HashMap::new(),
-        }
-    }
-
-    pub fn set(&mut self, key: &str, value: &str) {
-        self.hashmap.insert(key.to_string(), value.to_string());
-    }
-    pub fn get(&self, key: &str) -> Option<&str> {
-        self.hashmap.get(key).map(|s| s.as_str())
-    }
-    pub fn del(&mut self, key: &str) -> bool {
-        self.hashmap.remove(key).is_some()
-    }
-    pub fn exists(&self, key: &str) -> bool {
-        self.hashmap.contains_key(key)
-    }
-}
 
 fn handle_command_error(command: &str) {
     println!("ERROR: Unknown command: '{}'", command);
@@ -123,6 +43,21 @@ fn handle_exists(exists: bool, key: &str) {
     }
 }
 
+fn execute_command<'a>(command: Result<Command<'a>, ParseError<'a>>, store: &mut Store) {
+    match command {
+        Ok(Command::SET { key, value }) => store.set(key, value),
+        Ok(Command::GET { key }) => handle_get(store.get(key)),
+        Ok(Command::DEL { key }) => handle_del(store.del(key), key),
+        Ok(Command::EXISTS { key }) => handle_exists(store.exists(key), key),
+
+        Err(ParseError::UnknownCommand { command }) => handle_command_error(command),
+        Err(ParseError::ArgumentCountMismatch { expected, actual }) => {
+            handle_arg_error(expected, actual)
+        }
+        Err(ParseError::EmptyCommand) => (),
+    }
+}
+
 fn main() -> io::Result<()> {
     let mut input = String::new();
     let mut store = Store::new();
@@ -147,18 +82,8 @@ fn main() -> io::Result<()> {
         }
         let tokens: Vec<&str> = res.split_whitespace().collect();
 
-        match get_command(&tokens) {
-            Ok(Command::SET { key, value }) => store.set(key, value),
-            Ok(Command::GET { key }) => handle_get(store.get(key)),
-            Ok(Command::DEL { key }) => handle_del(store.del(key), key),
-            Ok(Command::EXISTS { key }) => handle_exists(store.exists(key), key),
-
-            Err(ParseError::UnknownCommand { command }) => handle_command_error(command),
-            Err(ParseError::ArgumentCountMismatch { expected, actual }) => {
-                handle_arg_error(expected, actual)
-            }
-            Err(ParseError::EmptyCommand) => (),
-        }
+        let command = get_command(&tokens);
+        execute_command(command, &mut store);
 
         input.clear();
     }
