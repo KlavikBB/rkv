@@ -28,6 +28,13 @@ impl Store {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_get_missing() {
+        let store = Store::new();
+        assert_eq!(store.get("asd"), None);
+    }
+
     #[test]
     fn test_set() {
         let mut store = Store::new();
@@ -41,5 +48,32 @@ mod tests {
         store.set("asd", "sda");
         store.set("asd", "dsa");
         assert_eq!(store.get("asd"), Some("dsa"));
+    }
+
+    #[test]
+    fn test_del() {
+        let mut store = Store::new();
+        store.set("asd", "sda");
+        assert_eq!(store.del("asd"), true);
+        assert_eq!(store.get("asd"), None);
+    }
+
+    #[test]
+    fn test_del_missing() {
+        let mut store = Store::new();
+        assert_eq!(store.del("asd"), false);
+    }
+
+    #[test]
+    fn test_exists() {
+        let mut store = Store::new();
+        store.set("asd", "sda");
+        assert_eq!(store.exists("asd"), true);
+    }
+
+    #[test]
+    fn test_exists_missing() {
+        let store = Store::new();
+        assert_eq!(store.exists("asd"), false);
     }
 }
