@@ -24,3 +24,22 @@ impl Store {
         self.hashmap.contains_key(key)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn test_set() {
+        let mut store = Store::new();
+        store.set("asd", "sda");
+        assert_eq!(store.get("asd"), Some("sda"));
+    }
+
+    #[test]
+    fn test_second_set() {
+        let mut store = Store::new();
+        store.set("asd", "sda");
+        store.set("asd", "dsa");
+        assert_eq!(store.get("asd"), Some("dsa"));
+    }
+}
